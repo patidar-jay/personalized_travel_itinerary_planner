@@ -9,11 +9,14 @@ deterministic demo engine.
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any, Dict, List, Optional
 
-GEMINI_MODEL = "gemini-1.5-flash"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# Model names can be overridden via environment variables so the app adapts to
+# whatever a given API account has access to. Defaults are broadly available.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 class LLMError(Exception):
@@ -99,8 +102,9 @@ class LLMProvider:
                 resp = self._client.generate_content(full_prompt)
                 return getattr(resp, "text", "") or ""
             else:  # groq
+                model = os.environ.get("GROQ_MODEL", GROQ_MODEL)
                 resp = self._client.chat.completions.create(
-                    model=GROQ_MODEL,
+                    model=model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},

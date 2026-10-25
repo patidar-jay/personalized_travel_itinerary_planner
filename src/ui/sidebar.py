@@ -6,6 +6,7 @@ from datetime import date
 import streamlit as st
 
 from .. import state
+from ..config import detect_provider_key
 from ..llm_provider import LLMProvider, LLMError, validate_key
 from ..models import (
     TripPreferences,
@@ -15,6 +16,29 @@ from ..models import (
     PACES,
     INTERESTS,
 )
+
+
+def _auto_connect_from_env() -> None:
+    """Once per session, try to connect using a key from secrets/env/.env.
+
+    Keeps the key in session memory only; never displays or logs the value.
+    """
+    if st.session_state.get("_auto_connect_tried"):
+        return
+    st.session_state["_auto_connect_tried"] = True
+
+    provider_name, api_key = detect_provider_key()
+    if not provider_name or not api_key:
+        return
+    try:
+        st.session_state["provider"] = LLMProvider(provider_name, api_key)
+        st.session_state["provider_label"] = f"Live: {provider_name.title()} (from .env)"
+        st.session_state["demo_mode"] = False
+    except LLMError:
+        # Fall back silently to demo mode; the UI still lets the user paste a key.
+        st.session_state["provider"] = None
+        st.session_state["provider_label"] = "Demo Mode"
+
 
 
 def _configure_provider() -> None:
@@ -140,6 +164,7 @@ def _preference_form() -> None:
 
 
 def render_sidebar() -> None:
+    _auto_connect_from_env()
     with st.sidebar:
         st.markdown("## ✈️ Planner Setup")
         _configure_provider()
